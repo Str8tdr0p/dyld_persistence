@@ -8,12 +8,18 @@
 ## Artifact Summary
 
 Production sysdiagnose reveals rogue dyld_shared_cache slice `168CADF663A7397F9E9D2CE113F33C6C` (157MB) absent from primary `dyld_shared_cache_arm64e` manifest.
-
-**SHA-256:** `ac746508938646c0cfae3f1d33f15bae718efbc7f0972426c41555e02e6f9770`
+- **SHA-256:** `ac746508938646c0cfae3f1d33f15bae718efbc7f0972426c41555e02e6f9770`
 
 **Download Links:**
 - Sandbox Escape: [Google Drive](https://drive.google.com/file/d/1rYNGtKBMb34FQT4zLExI51sdAYRES6iN/view?usp=sharing)
 - Verifier Script: `Forensic_Verifier.py`
+
+---
+
+## Network Attribution: `5.1.4.1` [Datagroup UA](https://www.virustotal.com/gui/ip-address/5.1.4.1/detection)
+**Hardcoded C2/Exfiltration endpoint identified in persistent `dyld_shared_cache` modules surviving DFU.** 
+
+---
 
 ## iOS 26.3 Mitigation Bypass Analysis
 
