@@ -9,8 +9,8 @@ import sys
 # EXPECTED FULL FILE SHA-256: ac746508938646c0cfae3f1d33f15bae718efbc7f0972426c41555e02e6f9770
 
 # --- CONFIGURATION ---
-# The analyst can either rename their download to match the UUID below 
-# or pass the filename as a command-line argument.
+# The default filename matches the UUID of the rogue slice.
+# The analyst may pass an alternative path as a command-line argument.
 DEFAULT_FILENAME = "168CADF663A7397F9E9D2CE113F33C6C"
 EXPECTED_HASH = "ac746508938646c0cfae3f1d33f15bae718efbc7f0972426c41555e02e6f9770"
 
@@ -22,11 +22,15 @@ def run_verification(target_path):
 
     if not os.path.exists(target_path):
         print(f"[!] ERROR: Target artifact not found at: {target_path}")
-        print(f"    Please ensure the file from the Google Drive link is in this folder.")
+        print(f"    Please ensure the file is present in the target directory.")
         return
 
-    with open(target_path, 'rb') as f:
-        data = f.read()
+    try:
+        with open(target_path, 'rb') as f:
+            data = f.read()
+    except Exception as e:
+        print(f"[!] ERROR: Failed to read file: {e}")
+        return
 
     # 1. ARTIFACT INTEGRITY CHECK
     actual_hash = hashlib.sha256(data).hexdigest()
@@ -35,28 +39,33 @@ def run_verification(target_path):
     if actual_hash == EXPECTED_HASH:
         print("    - RESULT: [PASS] File matches reported 23D127 rogue artifact.")
     else:
-        print("    - RESULT: [WARNING] Hash mismatch. Verify the download integrity.")
+        print("    - RESULT: [WARNING] Hash mismatch. Verify the source artifact.")
         all_pass = False
 
-    # 2. HEADER ANOMALY AUDIT
+    # 2. HEADER ANOMALY AUDIT (Integer Overflow Check)
+    # Layout: magic(4), version(4), imgs_cnt(4), imgs_off(4), maps_cnt(4), maps_off(4)
+    # Note: Layout derived from rogue slice; not guaranteed for all DSC versions.
     try:
-        # Unpack: magic(4), version(4), imgs_cnt(4), imgs_off(4), maps_cnt(4), maps_off(4)
         magic, version, img_cnt, _, map_cnt, _ = struct.unpack('<IIIIII', data[:24])
         print(f"\n[2] ARCHITECTURAL INTEGRITY AUDIT:")
         print(f"    - Header Magic: {hex(magic)} (dsch)")
         print(f"    - Reported Mappings: {map_cnt:,}")
+        
+        # A value of 900,000+ mappings in a ~158MB file triggers an integer overflow.
         if map_cnt > 900000:
             print("    - RESULT: [PASS] Impossible mapping count confirmed (Overflow Trigger).")
         else:
             print("    - RESULT: [FAIL] Mapping count does not meet exploit profile.")
             all_pass = False
     except Exception as e:
-        print(f"    - RESULT: [ERROR] Structural parse failure: {e}")
+        print(f"\n    - RESULT: [ERROR] Structural parse failure: {e}")
         all_pass = False
 
     # 3. DATA-AS-CODE (METADATA OFFSET 0x15cd)
+    # Heuristic check for ARM64 Branch Link (BL) instructions in the metadata segment.
     if len(data) >= 0x2000:
-        bl_pattern = b'\x00\x00\x00\x94' # ARM64 Branch Link (BL)
+        # Use hex escapes to prevent syntax errors in various Python environments.
+        bl_pattern = b'\x00\x00\x00\x94' 
         target_region = data[0x15cd:0x2000]
         bl_instances = target_region.count(bl_pattern)
         print(f"\n[3] DATA-AS-CODE (METADATA SEGMENT):")
@@ -66,6 +75,9 @@ def run_verification(target_path):
         else:
             print("    - RESULT: [FAIL] Metadata segment contains no branch patterns.")
             all_pass = False
+    else:
+        print("\n[3] DATA-AS-CODE: [ERROR] File length insufficient for metadata audit.")
+        all_pass = False
 
     # 4. SECURITY BYPASS SIGNATURES
     print(f"\n[4] SECURITY BYPASS SIGNATURES:")
@@ -85,6 +97,6 @@ def run_verification(target_path):
     print("="*68)
 
 if __name__ == "__main__":
-    # Check if a filename was passed as an argument, otherwise use default
+    # Accept file path as argument; default to UUID if none provided.
     target = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_FILENAME
     run_verification(target)
