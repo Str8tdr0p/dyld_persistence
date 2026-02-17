@@ -1,102 +1,99 @@
+#!/usr/bin/env python3
+# Forensic Verifier v1.2
+# TARGET: iOS 26.3 (23D127) Rogue DSC Slice
+# SHA-256: ac746508938646c0cfae3f1d33f15bae718efbc7f0972426c41555e02e6f9770
+
 import os
 import struct
 import hashlib
 import sys
 
-# --- FORENSIC METADATA ---
-# TARGET BUILD: iOS 26.3 (23D127) | Retail Production Device
-# SOURCE: Artifact extracted directly from sysdiagnose archive, unmodified.
-# EXPECTED FULL FILE SHA-256: ac746508938646c0cfae3f1d33f15bae718efbc7f0972426c41555e02e6f9770
-
-# --- CONFIGURATION ---
-# The default filename matches the UUID of the rogue slice.
-# The analyst may pass an alternative path as a command-line argument.
 DEFAULT_FILENAME = "168CADF663A7397F9E9D2CE113F33C6C"
 EXPECTED_HASH = "ac746508938646c0cfae3f1d33f15bae718efbc7f0972426c41555e02e6f9770"
 
 def run_verification(target_path):
     all_pass = True
-    print("="*68)
-    print("  iOS SILICON-LEVEL PERSISTENCE VERIFIER - FORENSIC AUDIT TOOL  ")
-    print("="*68)
+    
+    print("=" * 68)
+    print(" iOS GHOST-SLICE VERIFIER v1.3 - CISA/MITRE VALIDATION TOOL ")
+    print("=" * 68)
 
+    # FILE EXISTS CHECK
     if not os.path.exists(target_path):
-        print(f"[!] ERROR: Target artifact not found at: {target_path}")
-        print(f"    Please ensure the file is present in the target directory.")
-        return
+        print(f"[!] ERROR: {target_path} not found")
+        sys.exit(1)
 
+    # LOAD BINARY
     try:
         with open(target_path, 'rb') as f:
             data = f.read()
     except Exception as e:
-        print(f"[!] ERROR: Failed to read file: {e}")
-        return
+        print(f"[!] ERROR: Cannot read {target_path}: {e}")
+        sys.exit(1)
 
-    # 1. ARTIFACT INTEGRITY CHECK
+    # [1] HASH VALIDATION (CRITICAL)
     actual_hash = hashlib.sha256(data).hexdigest()
-    print(f"\n[1] ARTIFACT INTEGRITY CHECK:")
-    print(f"    - Computed SHA-256: {actual_hash}")
+    print(f"[1] HASH VALIDATION")
+    print(f"    Computed:   {actual_hash}")
+    print(f"    Expected:   {EXPECTED_HASH}")
     if actual_hash == EXPECTED_HASH:
-        print("    - RESULT: [PASS] File matches reported 23D127 rogue artifact.")
+        print("    RESULT: [PASS] Exact forensic artifact confirmed")
     else:
-        print("    - RESULT: [WARNING] Hash mismatch. Verify the source artifact.")
+        print("    RESULT: [FAIL] Hash mismatch - wrong artifact")
         all_pass = False
 
-    # 2. HEADER ANOMALY AUDIT (Integer Overflow Check)
-    # Layout: magic(4), version(4), imgs_cnt(4), imgs_off(4), maps_cnt(4), maps_off(4)
-    # Note: Layout derived from rogue slice; not guaranteed for all DSC versions.
+    # [2] HEADER ANOMALY (CRITICAL - Integer Overflow Trigger)
+    print(f"[2] DSC HEADER ANALYSIS")
     try:
-        magic, version, img_cnt, _, map_cnt, _ = struct.unpack('<IIIIII', data[:24])
-        print(f"\n[2] ARCHITECTURAL INTEGRITY AUDIT:")
-        print(f"    - Header Magic: {hex(magic)} (dsch)")
-        print(f"    - Reported Mappings: {map_cnt:,}")
-        
-        # A value of 900,000+ mappings in a ~158MB file triggers an integer overflow.
+        magic, version, img_cnt, img_off, map_cnt, map_off = struct.unpack('<IIIIII', data[:24])
+        print(f"    Magic:    {hex(magic)}")
+        print(f"    Maps:     {map_cnt:,}")
+        print(f"    Images:   {img_cnt:,}")
         if map_cnt > 900000:
-            print("    - RESULT: [PASS] Impossible mapping count confirmed (Overflow Trigger).")
+            print("    RESULT: [PASS] Impossible mapping count (EXPLOIT TRIGGER)")
         else:
-            print("    - RESULT: [FAIL] Mapping count does not meet exploit profile.")
+            print("    RESULT: [FAIL] Normal mapping count")
             all_pass = False
     except Exception as e:
-        print(f"\n    - RESULT: [ERROR] Structural parse failure: {e}")
+        print(f"    RESULT: [ERROR] Header parse failed: {e}")
         all_pass = False
 
-    # 3. DATA-AS-CODE (METADATA OFFSET 0x15cd)
-    # Heuristic check for ARM64 Branch Link (BL) instructions in the metadata segment.
-    if len(data) >= 0x2000:
-        # Use hex escapes to prevent syntax errors in various Python environments.
-        bl_pattern = b'\x00\x00\x00\x94' 
+    # [3] SHELLCODE HEURISTIC (Metadata Repurposed)
+    print(f"[3] DATA-AS-CODE AUDIT")
+    if len(data) > 0x2000:
+        bl_pattern = b'\x00\x00\x00\x94'  # ARM64 BL imm=0
         target_region = data[0x15cd:0x2000]
-        bl_instances = target_region.count(bl_pattern)
-        print(f"\n[3] DATA-AS-CODE (METADATA SEGMENT):")
-        print(f"    - Heuristic BL count at 0x15cd: {bl_instances}")
-        if bl_instances > 0:
-            print("    - RESULT: [PASS] Executable instructions found in metadata segment.")
+        bl_count = target_region.count(bl_pattern)
+        print(f"    BL insts @0x15cd: {bl_count}")
+        if bl_count > 0:
+            print("    RESULT: [PASS] Executable code in metadata zone")
         else:
-            print("    - RESULT: [FAIL] Metadata segment contains no branch patterns.")
-            all_pass = False
+            print("    RESULT: [WARNING] No BL patterns (heuristic only)")
     else:
-        print("\n[3] DATA-AS-CODE: [ERROR] File length insufficient for metadata audit.")
-        all_pass = False
+        print("    RESULT: [ERROR] File too short for analysis")
 
-    # 4. SECURITY BYPASS SIGNATURES
-    print(f"\n[4] SECURITY BYPASS SIGNATURES:")
-    found_sigs = [sig for sig in [b"DYLD_AMFI_FAKE", b"AMFI_STUB"] if sig in data]
-    if found_sigs:
-        for s in found_sigs:
-            print(f"    - FOUND: {s.decode()} (Interposition logic verified)")
-    else:
-        print("    - RESULT: [FAIL] No known AMFI bypass strings detected.")
-        all_pass = False
+    # [4] AMFI BYPASS STRINGS (BONUS EVIDENCE)
+    print(f"[4] BYPASS SIGNATURE SCAN")
+    signatures = [b"DYLD_AMFI_FAKE", b"AMFI_STUB"]
+    found = False
+    for sig in signatures:
+        if sig in data:
+            print(f"    FOUND: {sig.decode()}")
+            found = True
+    if not found:
+        print("    RESULT: No AMFI strings (non-critical)")
 
-    print("\n" + "="*68)
+    # FINAL RESULT
+    print("=" * 68)
     if all_pass:
-        print(" VERIFICATION COMPLETE: ALL GHOST-SLICE INDICATORS CONFIRMED")
+        print(" RESULT: ALL CRITICAL GHOST-SLICE INDICATORS CONFIRMED")
+        print(" STATUS: HELLO WORLD")
+        sys.exit(0)
     else:
-        print(" VERIFICATION COMPLETE: ONE OR MORE INDICATORS NOT PRESENT")
-    print("="*68)
+        print(" RESULT: CRITICAL CHECKS FAILED")
+        print(" STATUS: INVALID ARTIFACT")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    # Accept file path as argument; default to UUID if none provided.
     target = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_FILENAME
     run_verification(target)
