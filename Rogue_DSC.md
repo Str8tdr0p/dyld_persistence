@@ -4,13 +4,14 @@
 
 **Researcher:** Joseph Raymond Goydish II
 
-**Target Build:** iOS 26.3 (23D127) – **Retail Production Silicon** **Classification:** Critical – Hardware Root-of-Trust Bypass / Kernel-Mode Linker Interposition
+**Target Build:** iOS 26.3 (23D127) – **Retail Production Silicon** 
+**Classification:** Critical – Hardware Root-of-Trust Bypass / Kernel-Mode Linker Interposition
 
 ---
 
 ### **1. Executive Summary**
 
-Forensic audit of a production iOS 26.3 `sysdiagnose` has identified a **Rogue Shared Cache Slice** (UUID: `168CADF663A7397F9E9D2CE113F33C6C`). This artifact represents a **"Zombie Cache"**—an executable sub-cache resident in the system directory that is entirely absent from the primary `dyld` manifest. The artifact leverages a crafted **integer overflow** within the Mach-O sub-cache header to bypass **AMFI (Apple Mobile File Integrity)** and **PAC (Pointer Authentication Codes)**. This discovery provides empirical evidence of a critical architectural failure in **DICE (Device Identifier Composition Engine)** and **DART (Device Address Resolution Table)** on production-fused Apple Silicon.
+Forensic audit of a production iOS 26.3 `sysdiagnose` has identified a **Rogue Shared Cache Slice** (UUID: `168CADF663A7397F9E9D2CE113F33C6C`). This artifact represents a **"Zombie Cache"**... an executable sub-cache resident in the system directory that is entirely absent from the primary `dyld` manifest. The artifact leverages a crafted **integer overflow** within the Mach-O sub-cache header to bypass **AMFI (Apple Mobile File Integrity)** and **PAC (Pointer Authentication Codes)**. This discovery provides empirical evidence of a critical architectural failure in **DICE (Device Identifier Composition Engine)** and **DART (Device Address Resolution Table)** on production-fused Apple Silicon.
 
 ---
 
@@ -24,7 +25,13 @@ Forensic audit of a production iOS 26.3 `sysdiagnose` has identified a **Rogue S
 * **Full File SHA-256:** `ac746508938646c0cfae3f1d33f15bae718efbc7f0972426c41555e02e6f9770`
 * **Anomaly Zone SHA-256 (0x0-0x2000):** `e90f05fc4f1fc7994300e152c1797dec6541b11355a278caba7ddb2c71dcadc0`
 
-#### **B. Structural Contradictions (Verification Data)**
+### **B. Verified External Evidence Links**
+
+- Isolated Rogue Slice (DSC Sub-cache): https://drive.google.com/file/d/1rYNGtKBMb34FQT4zLExI51sdAYRES6iN/view?usp=sharing
+- Full Sysdiagnose Archive (tar.gz): https://drive.google.com/file/d/1YPtY-QvEb8m7PeUoMsEjgJ9K5P4jxaUw/view?usp=sharing
+
+
+#### **c. Structural Contradictions (Verification Data)**
 
 | Forensic Metric | Identified Rogue Artifact | Standard 23D127 Control |
 | --- | --- | --- |
