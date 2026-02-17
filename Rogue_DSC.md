@@ -27,8 +27,7 @@ Forensic audit of a production iOS 26.3 `sysdiagnose` has identified a **Rogue S
 
 ### **B. Verified External Evidence Links**
 
-- Isolated Rogue Slice (DSC Sub-cache): https://drive.google.com/file/d/1rYNGtKBMb34FQT4zLExI51sdAYRES6iN/view?usp=sharing
-- Full Sysdiagnose Archive (tar.gz): https://drive.google.com/file/d/1YPtY-QvEb8m7PeUoMsEjgJ9K5P4jxaUw/view?usp=sharing
+ Isolated Rogue Slice (DSC Sub-cache): https://drive.google.com/file/d/1rYNGtKBMb34FQT4zLExI51sdAYRES6iN/view?usp=sharing
 
 
 #### **c. Structural Contradictions (Verification Data)**
