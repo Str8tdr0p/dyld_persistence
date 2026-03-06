@@ -16,11 +16,6 @@ Production sysdiagnose reveals rogue dyld_shared_cache slice `168CADF663A7397F9E
 
 ---
 
-## Network Attribution: `5.1.4.1` [Datagroup UA](https://www.virustotal.com/gui/ip-address/5.1.4.1/detection)
-**Hardcoded C2/Exfiltration endpoint identified in persistent `dyld_shared_cache` modules surviving DFU.** 
-
----
-
 ## iOS 26.3 Mitigation Bypass Analysis
 
 | Mitigation | Status | Bypass Mechanism |
